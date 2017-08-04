@@ -1521,7 +1521,7 @@ func (ctxt *Link) dodata() {
 	case BuildmodeCArchive, BuildmodeCShared, BuildmodeShared, BuildmodePlugin:
 		hasinitarr = true
 	}
-	if hasinitarr {
+	if hasinitarr && len(data[SINITARR]) > 0 {
 		sect := addsection(&Segdata, ".init_array", 06)
 		sect.Align = dataMaxAlign[SINITARR]
 		datsize = Rnd(datsize, int64(sect.Align))

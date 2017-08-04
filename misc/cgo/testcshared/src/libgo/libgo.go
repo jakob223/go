@@ -5,6 +5,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	_ "p"
 	"syscall"
 	"time"
@@ -16,17 +18,21 @@ var initCh = make(chan int, 1)
 var ranMain bool
 
 func init() {
+	os.Exit(1)
+	fmt.Fprintln(os.Stderr, "In init now")
 	// emulate an exceedingly slow package initialization function
 	time.Sleep(100 * time.Millisecond)
 	initCh <- 42
 }
 
 func main() {
+	os.Exit(2)
 	ranMain = true
 }
 
 //export DidInitRun
 func DidInitRun() bool {
+	fmt.Fprintln(os.Stderr, "IN DID INIT RUN")
 	select {
 	case x := <-initCh:
 		if x != 42 {

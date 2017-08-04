@@ -14,29 +14,33 @@
 //   int32_t FromPkg();
 //   uint32_t Divu(uint32_t, uint32_t);
 int main(void) {
+  fprintf(stderr,"Running!\n");
   int8_t ran_init = DidInitRun();
   if (!ran_init) {
     fprintf(stderr, "ERROR: DidInitRun returned unexpected results: %d\n",
             ran_init);
     return 1;
   }
+    fprintf(stderr,"Running!\n");
   int8_t ran_main = DidMainRun();
   if (ran_main) {
     fprintf(stderr, "ERROR: DidMainRun returned unexpected results: %d\n",
             ran_main);
     return 1;
   }
+    fprintf(stderr,"Running!\n");
   int32_t from_pkg = FromPkg();
   if (from_pkg != 1024) {
     fprintf(stderr, "ERROR: FromPkg=%d, want %d\n", from_pkg, 1024);
     return 1;
   }
+    fprintf(stderr,"Running!\n");
   uint32_t divu = Divu(2264, 31);
   if (divu != 73) {
     fprintf(stderr, "ERROR: Divu(2264, 31)=%d, want %d\n", divu, 73);
     return 1;
   }
-  // test.bash looks for "PASS" to ensure this program has reached the end. 
+  // test.bash looks for "PASS" to ensure this program has reached the end.
   printf("PASS\n");
   return 0;
 }
