@@ -35,6 +35,7 @@ fi
 androidpath=/data/local/tmp/testcshared-$$
 
 function cleanup() {
+	exit 6
 	rm -f libgo.$libext libgo2.$libext libgo4.$libext libgo5.$libext
 	rm -f libgo.h libgo4.h libgo5.h
 	rm -f testp testp2 testp3 testp4 testp5
@@ -57,7 +58,7 @@ function run() {
 		output=$(adb shell "cd ${androidpath}; $@")
 		output=$(echo $output|tr -d '\r')
 		case $output in
-			*PASS) echo "PASS";; 
+			*PASS) echo "PASS";;
 			*) echo "$output";;
 		esac
 		;;
@@ -101,6 +102,10 @@ if [ "$goos" = "android" ]; then
 	GOGCCFLAGS="${GOGCCFLAGS} -pie -fuse-ld=gold"
 fi
 
+if [ "$goos" != "freebsd" ]; then
+	LINKERFLAGS="-ldl"
+fi
+
 status=0
 
 # test0: exported symbols in shared lib are accessible.
@@ -115,7 +120,7 @@ if [ "$output" != "PASS" ]; then
 fi
 
 # test1: shared library can be dynamically loaded and exported symbols are accessible.
-$(go env CC) ${GOGCCFLAGS} -o testp main1.c -ldl
+$(go env CC) ${GOGCCFLAGS} -o testp main1.c ${LINKERFLAGS}
 binpush testp
 output=$(run ./testp ./libgo.$libext)
 if [ "$output" != "PASS" ]; then
@@ -140,7 +145,7 @@ fi
 
 # test3: tests main.main is exported on android.
 if [ "$goos" = "android" ]; then
-	$(go env CC) ${GOGCCFLAGS} -o testp3 main3.c -ldl
+	$(go env CC) ${GOGCCFLAGS} -o testp3 main3.c ${LINKERFLAGS}
 	binpush testp3
 	output=$(run ./testp ./libgo.so)
 	if [ "$output" != "PASS" ]; then
@@ -152,7 +157,7 @@ fi
 # test4: tests signal handlers
 GOPATH=$(pwd) go build -buildmode=c-shared $suffix -o libgo4.$libext libgo4
 binpush libgo4.$libext
-$(go env CC) ${GOGCCFLAGS} -pthread -o testp4 main4.c -ldl
+$(go env CC) ${GOGCCFLAGS} -pthread -o testp4 main4.c ${LINKERFLAGS}
 binpush testp4
 output=$(run ./testp4 ./libgo4.$libext 2>&1)
 if test "$output" != "PASS"; then
@@ -167,7 +172,7 @@ fi
 # test5: tests signal handlers with os/signal.Notify
 GOPATH=$(pwd) go build -buildmode=c-shared $suffix -o libgo5.$libext libgo5
 binpush libgo5.$libext
-$(go env CC) ${GOGCCFLAGS} -pthread -o testp5 main5.c -ldl
+$(go env CC) ${GOGCCFLAGS} -pthread -o testp5 main5.c ${LINKERFLAGS}
 binpush testp5
 output=$(run ./testp5 ./libgo5.$libext 2>&1)
 if test "$output" != "PASS"; then

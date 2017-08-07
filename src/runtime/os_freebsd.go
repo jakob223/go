@@ -12,7 +12,7 @@ import (
 type mOS struct{}
 
 //go:noescape
-func thr_new(param *thrparam, size int32)
+func thr_new(param *thrparam, size int32) int32
 
 //go:noescape
 func sigaltstack(new, old *stackt)
@@ -202,6 +202,59 @@ func newosproc(mp *m, stk unsafe.Pointer) {
 	// TODO: Check for error.
 	thr_new(&param, int32(unsafe.Sizeof(param)))
 	sigprocmask(_SIG_SETMASK, &oset, nil)
+}
+
+// newosproc0 is a version of newosproc that can be called before the runtime
+// is initialized.
+//
+//go:nosplit
+func newosproc0(stacksize uintptr, fn unsafe.Pointer) {
+	stack := sysAlloc(stacksize, &memstats.stacks_sys)
+	if stack == nil {
+		write(2, unsafe.Pointer(&failallocatestack[0]), int32(len(failallocatestack)))
+		exit(1)
+	}
+
+	// TODO: allocate a TLS correctly - I'm pretty sure this is wrong
+	// and/or will lead to memory leaks.
+	var tls [6]uintptr
+	// tls = C.malloc(unsafe.Sizeof(tls))
+
+	// TODO: allocate a new child_tid.
+	// TODO: is this the right thing to do here?
+	var procID *uint64 // = C.malloc(8)
+
+	param := thrparam{
+		start_func: funcPC(thr_start),
+		arg:        fn,
+		stack_base: uintptr(stack), // + stacksize?
+		stack_size: stacksize,
+		child_tid:  unsafe.Pointer(procID),
+		parent_tid: nil,
+		tls_base:   unsafe.Pointer(tls[0]),
+		tls_size:   unsafe.Sizeof(tls),
+	}
+
+	var oset sigset
+	sigprocmask(_SIG_SETMASK, &sigset_all, &oset)
+	ret := thr_new(&param, int32(unsafe.Sizeof(param)))
+	sigprocmask(_SIG_SETMASK, &oset, nil)
+	if ret < 0 {
+		write(2, unsafe.Pointer(&failthreadcreate[0]), int32(len(failthreadcreate)))
+		exit(1)
+	}
+}
+
+var failallocatestack = []byte("runtime: failed to allocate stack for the new OS thread\n")
+var failthreadcreate = []byte("runtime: failed to create new OS thread\n")
+
+// Called to do synchronous initialization of Go code built with
+// -buildmode=c-archive or -buildmode=c-shared.
+// None of the Go runtime is initialized.
+//go:nosplit
+//go:nowritebarrierrec
+func libpreinit() {
+	initsig(true)
 }
 
 func osinit() {
